@@ -1,9 +1,11 @@
 #!/bin/bash
 
-set -e
+set -e  # Exit immediately if a command exits with a non-zero status
+
 OS=$(uname -s)
 ARCH=$(uname -m)
 
+# Set the architecture variable
 if [[ "$ARCH" == "x86_64" ]]; then
     ARCH="amd64"
 elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
@@ -11,24 +13,25 @@ elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
 fi
 
 API_URL="https://api.github.com/repos/dymensionxyz/roller/releases/latest"
-if [ "$ROLLER_RELEASE_TAG" = "" ]; then
-  TGZ_URL=$(curl -s "$API_URL" \
-      | grep "browser_download_url.*_${OS}_${ARCH}.tar.gz" \
-      | cut -d : -f 2,3 \
-      | tr -d \" \
-      | tr -d ' ' )
+
+# Determine the download URL
+if [ -z "$ROLLER_RELEASE_TAG" ]; then
+    TGZ_URL=$(curl -s "$API_URL" \
+        | grep "browser_download_url.*_${OS}_${ARCH}.tar.gz" \
+        | cut -d : -f 2,3 \
+        | tr -d \" \
+        | tr -d ' ')
+    
+    # Check if the URL was found
+    if [ -z "$TGZ_URL" ]; then
+        echo "Error: Download URL not found. Please check the release assets."
+        exit 1
+    fi
 else
-  TGZ_URL="https://github.com/dymensionxyz/roller/releases/download/$ROLLER_RELEASE_TAG/roller_${OS}_${ARCH}.tar.gz"
+    TGZ_URL="https://github.com/dymensionxyz/roller/releases/download/$ROLLER_RELEASE_TAG/roller_${OS}_${ARCH}.tar.gz"
 fi
+
 ROLLER_BIN_PATH="/usr/local/bin/roller"
-if [ -f "$ROLLER_BIN_PATH" ] || [ -f "$ROLLAPP_EVM_PATH" ] || [ -f "$DYMD_BIN_PATH" ] || [ -d "$INTERNAL_DIR" ]; then
-    sudo rm -f "$ROLLER_BIN_PATH"
-fi
-sudo mkdir -p "/tmp/roller_tmp"
-echo "💈 Downloading roller ${ROLLER_RELEASE_TAG}..."
-sudo curl -L "$TGZ_URL" --progress-bar | sudo tar -xz -C "/tmp/roller_tmp"
-echo "💈 Installing roller ${ROLLER_RELEASE_TAG}..."
-sudo mv "/tmp/roller_tmp/roller" "$ROLLER_BIN_PATH"
-sudo chmod +x "$ROLLER_BIN_PATH"
-sudo rm -rf "/tmp/roller_tmp"
-echo "💈 Installation complete! You can now use roller from your terminal."
+
+# Check and remove existing files if they exist
+if [ -f "$ROLLER_BIN_PATH" ] || [ -f "$ROLLAPP_EVM_PATH" ] || [ -f "$DYMD_BIN_PATH" ] || [ -d "$INTERNAL_DIR" ];
